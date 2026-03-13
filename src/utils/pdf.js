@@ -1,7 +1,10 @@
+import { jsPDF } from "jspdf"; // <--- Add this import!
 import COMPANY from './company';
 
 export function downloadPDF() {
-  const { jsPDF } = window.jspdf;
+  // Remove the `const { jsPDF } = window.jspdf;` line
+  
+  // Create your landscape 85x55mm card
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [85, 55] });
 
   doc.setFillColor(20, 23, 23);
