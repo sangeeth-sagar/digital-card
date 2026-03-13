@@ -1,0 +1,53 @@
+.action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+/* Info strip */
+.info-strip {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-top: 14px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+}
+
+.info-strip-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  transition: background 0.15s;
+}
+.info-strip-row:last-child { border-bottom: none; }
+.info-strip-row:hover { background: var(--cream); }
+
+.info-strip-icon {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  background: var(--mint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.info-strip-icon svg { width: 14px; height: 14px; color: var(--green-dark); }
+
+.info-strip-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.info-strip-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}

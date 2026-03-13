@@ -1,0 +1,118 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Bebas+Neue&family=Inter:wght@300;400;500&display=swap');
+
+:root {
+  --green:      #75C043;
+  --green-dark: #09670F;
+  --ink:        #141717;
+  --ink2:       #141313;
+  --mint:       #E0F3E3;
+  --teal:       #2BBE9B;
+  --white:      #ffffff;
+  --cream:      #f0f5ee;
+  --muted:      #6b7c69;
+  --border:     rgba(117,192,67,0.2);
+  --card-w:     340px;
+  --card-h:     194px;
+  --radius:     12px;
+  --shadow:     0 24px 64px rgba(9,103,15,0.18), 0 6px 20px rgba(0,0,0,0.12);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  background: var(--cream);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 0% 0%,   rgba(117,192,67,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 70% at 100% 100%, rgba(9,103,15,0.06)  0%, transparent 60%);
+  pointer-events: none; z-index: 0;
+}
+
+main {
+  position: relative; z-index: 1;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 16px 60px;
+}
+
+/* ── Shared button styles ── */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 13px 16px;
+  border-radius: 10px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  letter-spacing: 0.2px;
+}
+
+.btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+.btn-dark {
+  background: var(--ink);
+  color: white;
+  box-shadow: 0 4px 14px rgba(20,23,23,0.3);
+}
+.btn-dark:hover  { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(20,23,23,0.4); }
+.btn-dark:active { transform: translateY(0); }
+
+.btn-green {
+  background: linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%);
+  color: white;
+  box-shadow: 0 4px 14px rgba(117,192,67,0.4);
+}
+.btn-green:hover  { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(117,192,67,0.5); }
+.btn-green:active { transform: translateY(0); }
+
+.btn-outline {
+  background: white;
+  color: var(--ink);
+  border: 1.5px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.btn-outline:hover { border-color: var(--green); background: var(--mint); }
+
+/* ── Shared animation ── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(0.85); }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in { animation: fadeUp 0.4s ease; }
+
+.spinner {
+  display: inline-block;
+  width: 13px; height: 13px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+@media (min-width: 520px) {
+  .action-row { grid-template-columns: 1fr 1fr 1fr !important; }
+}
