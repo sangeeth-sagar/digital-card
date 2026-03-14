@@ -4,8 +4,8 @@ import { downloadPDF, saveVCard, shareCard } from '../utils/pdf';
 import '../assets/styles/CardActions.css';
 
 export default function CardActions({ showToast }) {
-  const handlePDF = async () => {
-    try { await downloadPDF(); showToast('PDF downloaded ✓', 'success'); }
+  const handlePDF = () => {
+    try { downloadPDF(); showToast('PDF downloaded ✓', 'success'); }
     catch { showToast('PDF generation failed.', 'error'); }
   };
 

@@ -1,53 +1,79 @@
 import COMPANY from './company';
 
-async function svgToBase64(svgUrl) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width  = img.naturalWidth  || 672;
-      canvas.height = img.naturalHeight || 384;
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/png'));
-    };
-    img.onerror = () => reject(new Error(`Failed to load ${svgUrl}`));
-    img.src = svgUrl;
-  });
-}
-
-export async function downloadPDF() {
+export function downloadPDF() {
   const { jsPDF } = window.jspdf;
   const W = 85.6;
   const H = 54;
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [W, H] });
 
-  // ── Page 1: Front.svg ──
-  try {
-    const frontImg = await svgToBase64('Front.svg');
-    doc.addImage(frontImg, 'PNG', 0, 0, W, H);
-  } catch {
-    doc.setFillColor(9, 103, 15);
-    doc.rect(0, 0, W, H, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text(COMPANY.brand, W / 2, H / 2, { align: 'center' });
-  }
+  // ── Dark header strip ──
+  doc.setFillColor(20, 23, 23);
+  doc.rect(0, 0, W, 19, 'F');
+  doc.setFillColor(117, 192, 67);
+  doc.rect(0, 18.5, W, 1, 'F');
 
-  // ── Page 2: Back.svg ──
-  doc.addPage();
-  try {
-    const backImg = await svgToBase64('Back.svg');
-    doc.addImage(backImg, 'PNG', 0, 0, W, H);
-  } catch {
-    doc.setFillColor(20, 23, 23);
-    doc.rect(0, 0, W, H, 'F');
-    doc.setTextColor(255, 255, 255);
+  // CEO
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.text(COMPANY.person, 6, 7);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6);
+  doc.setTextColor(117, 192, 67);
+  doc.text(COMPANY.title, 6, 11);
+
+  // CMO
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text(COMPANY.cmo, 6, 16);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6);
+  doc.setTextColor(117, 192, 67);
+  doc.text(COMPANY.cmoTitle, 6, 20);
+
+  // Brand top-right
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.text(COMPANY.brand.toUpperCase(), W - 6, 6, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(4.5);
+  doc.setTextColor(180, 220, 180);
+  const nameLines = doc.splitTextToSize(COMPANY.name, 28);
+  doc.text(nameLines, W - 6, 10, { align: 'right' });
+
+  // ── Body ──
+  doc.setTextColor(20, 23, 23);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  const bodyNameLines = doc.splitTextToSize(COMPANY.name, 73);
+  doc.text(bodyNameLines, 6, 26);
+
+  const nameBlockH = bodyNameLines.length * 4;
+  doc.setFontSize(6.5);
+  doc.setTextColor(100, 124, 100);
+  doc.setFont('helvetica', 'normal');
+  doc.text(COMPANY.tagline, 6, 26 + nameBlockH);
+
+  // Contact details
+  let y = 26 + nameBlockH + 6;
+  [COMPANY.email, COMPANY.phone, COMPANY.website, COMPANY.address].forEach(val => {
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.text(COMPANY.name, W / 2, H / 2, { align: 'center' });
-  }
+    doc.setFontSize(6);
+    doc.setTextColor(9, 103, 15);
+    const lines = doc.splitTextToSize(val, 73);
+    doc.text(lines, 6, y);
+    y += lines.length * 3.8;
+  });
+
+  // ── Footer strip ──
+  doc.setFillColor(224, 243, 227);
+  doc.rect(0, 50, W, 6, 'F');
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(6);
+  doc.setTextColor(9, 103, 15);
+  doc.text(`"${COMPANY.tagline}"`, 6, 54);
 
   doc.save(`${COMPANY.brand}_Card.pdf`);
 }
