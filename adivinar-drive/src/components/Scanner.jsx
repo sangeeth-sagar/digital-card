@@ -65,37 +65,37 @@ export default function Scanner({ showToast }) {
     showToast(`${camSide === 'front' ? 'Front' : 'Back'} captured ✓`, 'success');
   }
 
-  // ── Upload to Google Drive ───────────────────
+  // ── Upload — single PDF with front + back ────
   async function uploadToDrive() {
-    const entries = Object.entries(images).filter(([, v]) => v);
-    if (!entries.length) {
+    if (!images.front && !images.back) {
       setStatus({ msg: '⚠️ Capture or upload at least one side first.', type: 'warning' });
       return;
     }
 
     setIsUploading(true);
-    setStatus({ msg: '<span class="spinner"></span> Saving …', type: 'processing' });
+    setStatus({ msg: '<span class="spinner"></span> Creating PDF and saving to Drive…', type: 'processing' });
 
     try {
-      let saved = 0;
-      for (const [side, imageBase64] of entries) {
-        const res = await fetch('/api/upload-drive', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ imageBase64, side }),
-        });
-        if (res.ok) saved++;
-      }
+      const res = await fetch('/api/upload-drive', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          front: images.front || null,
+          back:  images.back  || null,
+        }),
+      });
 
-      if (saved > 0) {
-        setStatus({ msg: `✅ ${saved} photo${saved > 1 ? 's' : ''} saved!`, type: 'success' });
-        showToast('Saved ✓', 'success');
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setStatus({ msg: `✅ PDF saved to Drive!`, type: 'success' });
+        showToast('Card PDF saved to Drive ✓', 'success');
         setTimeout(reset, 3000);
       } else {
-        throw new Error('Upload failed');
+        throw new Error(data.message || 'Upload failed');
       }
-    } catch {
-      setStatus({ msg: '❌ Upload failed. Check server / env vars.', type: 'error' });
+    } catch (err) {
+      setStatus({ msg: `❌ ${err.message}`, type: 'error' });
       showToast('Upload failed.', 'error');
     } finally {
       setIsUploading(false);
@@ -126,12 +126,11 @@ export default function Scanner({ showToast }) {
             </h3>
             <span className="ai-badge drive-badge">☁️ Drive Sync</span>
           </div>
-          <p>Capture front &amp; back — photos saved </p>
+          <p>Capture front &amp; back — saved as one PDF to Google Drive</p>
         </div>
 
         <div className="scanner-body">
 
-          {/* Status */}
           {status && (
             <div
               className={`status-msg ${status.type}`}
@@ -139,28 +138,24 @@ export default function Scanner({ showToast }) {
             />
           )}
 
-          {/* Upload slots */}
           <UploadSlot side="front" image={images.front} onFile={handleFileChange} onCamera={openCamera} />
           <UploadSlot side="back"  image={images.back}  onFile={handleFileChange} onCamera={openCamera} />
 
-          {/* Upload button */}
           {canUpload && (
             <button className="btn btn-green process-btn" onClick={uploadToDrive}>
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M8 11V3M4 7l4-4 4 4"/><path d="M2 13h12"/>
               </svg>
-              {hasFront && hasBack ? 'Upload Both' : 'Upload'}
+              {hasFront && hasBack ? 'Save as PDF to Drive' : 'Save to Drive'}
             </button>
           )}
 
-          {/* Clear button */}
           {(hasFront || hasBack) && !isUploading && (
             <button className="btn btn-outline" style={{ width: '100%', marginTop: 8 }} onClick={reset}>
               Clear
             </button>
           )}
 
-          {/* Tips */}
           <div className="tips-grid">
             {[['☀️', 'Good Light'], ['📐', 'Flat Surface'], ['🔍', 'HD Clear']].map(([icon, name]) => (
               <div className="tip-card" key={name}>
@@ -173,7 +168,6 @@ export default function Scanner({ showToast }) {
         </div>
       </div>
 
-      {/* Camera modal */}
       {camOpen && (
         <div className="camera-modal active">
           <div className="cam-label">
@@ -196,7 +190,6 @@ export default function Scanner({ showToast }) {
   );
 }
 
-// ── Upload Slot ───────────────────────────────
 function UploadSlot({ side, image, onFile, onCamera }) {
   const isBack = side === 'back';
   const label  = isBack ? 'Back' : 'Front';

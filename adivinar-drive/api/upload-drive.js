@@ -1,6 +1,9 @@
 // api/upload-drive.js
+// Combines front + back card images into a single PDF and uploads to Google Drive
+
 const { google } = require('googleapis');
 const { Readable } = require('stream');
+const { jsPDF }   = require('jspdf');
 
 function getAuth() {
   const clientId     = process.env.GOOGLE_CLIENT_ID;
@@ -22,15 +25,38 @@ function getAuth() {
   return oauth2Client;
 }
 
+// Build a PDF buffer with front on page 1, back on page 2
+function buildPDF(frontBase64, backBase64) {
+  // Business card size: 85.6mm x 54mm (landscape)
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [85.6, 54] });
+
+  if (frontBase64) {
+    const mime = frontBase64.match(/^data:(image\/\w+);base64,/)?.[1] || 'image/jpeg';
+    const fmt  = mime.includes('png') ? 'PNG' : 'JPEG';
+    doc.addImage(frontBase64, fmt, 0, 0, 85.6, 54);
+  }
+
+  if (backBase64) {
+    doc.addPage();
+    const mime = backBase64.match(/^data:(image\/\w+);base64,/)?.[1] || 'image/jpeg';
+    const fmt  = mime.includes('png') ? 'PNG' : 'JPEG';
+    doc.addImage(backBase64, fmt, 0, 0, 85.6, 54);
+  }
+
+  // Return as Buffer
+  const pdfArrayBuffer = doc.output('arraybuffer');
+  return Buffer.from(pdfArrayBuffer);
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const { imageBase64, side = 'card' } = req.body;
+  const { front, back } = req.body;
 
-  if (!imageBase64) {
-    return res.status(400).json({ message: 'imageBase64 is required.' });
+  if (!front && !back) {
+    return res.status(400).json({ message: 'At least one of front or back image is required.' });
   }
 
   const FOLDER_ID = process.env.DRIVE_FOLDER_ID;
@@ -42,28 +68,29 @@ module.exports = async function handler(req, res) {
     const auth  = getAuth();
     const drive = google.drive({ version: 'v3', auth });
 
-    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-    const buffer     = Buffer.from(base64Data, 'base64');
-    const mimeType   = imageBase64.match(/^data:(image\/\w+);base64,/)?.[1] || 'image/jpeg';
-    const ext        = mimeType.split('/')[1] || 'jpg';
-    const timestamp  = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename   = `${side}_${timestamp}.${ext}`;
+    // Build PDF
+    const pdfBuffer = buildPDF(front, back);
 
-    console.log('Uploading:', filename);
+    // Filename: card_2024-01-01T10-30-00.pdf
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename  = `card_${timestamp}.pdf`;
+
+    console.log('Uploading PDF:', filename);
 
     const file = await drive.files.create({
       requestBody: {
         name:    filename,
         parents: [FOLDER_ID],
+        mimeType: 'application/pdf',
       },
       media: {
-        mimeType,
-        body: Readable.from(buffer),
+        mimeType: 'application/pdf',
+        body:     Readable.from(pdfBuffer),
       },
       fields: 'id, name, webViewLink',
     });
 
-    console.log('✅ Uploaded:', file.data.name);
+    console.log('✅ Uploaded PDF:', file.data.name);
     return res.status(200).json({
       success:  true,
       fileId:   file.data.id,
@@ -72,7 +99,7 @@ module.exports = async function handler(req, res) {
     });
 
   } catch (err) {
-    console.error('❌  error:', err.message);
+    console.error('❌ Drive error:', err.message);
     return res.status(500).json({ message: err.message });
   }
 };
