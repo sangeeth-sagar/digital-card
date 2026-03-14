@@ -17,7 +17,7 @@ export default function Scanner({ showToast }) {
     const file = e.target.files[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) { showToast('Please select an image file.', 'error'); return; }
-    if (file.size > 10 * 1024 * 1024)   { showToast('Image too large. Max 10MB.', 'error'); return; }
+    if (file.size > 25 * 1024 * 1024)   { showToast('Image too large. Max 10MB.', 'error'); return; }
     const reader = new FileReader();
     reader.onload = ev => {
       setImages(prev => ({ ...prev, [side]: ev.target.result }));
