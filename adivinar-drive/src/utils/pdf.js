@@ -98,9 +98,9 @@ export function saveVCard() {
   const vcf = [
     'BEGIN:VCARD',
     'VERSION:3.0',
-    `FN:${COMPANY.person}`,
+    `FN:${COMPANY.name}`,
     `ORG:${COMPANY.name}`,
-    `TITLE:${COMPANY.title}`,
+    `TITLE:${COMPANY.tagline}`,
     `EMAIL:${COMPANY.email}`,
     `TEL;TYPE=CELL:${COMPANY.phone1}`,
     `TEL;TYPE=CELL:${COMPANY.phone2}`,
