@@ -6,58 +6,59 @@ export function downloadPDF() {
 
   // ── Dark header strip ──
   doc.setFillColor(20, 23, 23);
-  doc.rect(0, 0, 85, 17, 'F');
+  doc.rect(0, 0, 85, 19, 'F');
   doc.setFillColor(117, 192, 67);
-  doc.rect(0, 16.5, 85, 1, 'F');
+  doc.rect(0, 18.5, 85, 1, 'F');
 
-  // CEO name + title
+  // ── CEO (left column) ──
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.text(COMPANY.person, 6, 6);
+  doc.setFontSize(8.5);
+  doc.text(COMPANY.person, 6, 7);
+
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
-  doc.setTextColor(180, 220, 180);
-  doc.text(COMPANY.title, 6, 10);
+  doc.setTextColor(117, 192, 67);
+  doc.text(COMPANY.title, 6, 11);
 
-  // CMO name + title
+  // ── CMO (left column, below CEO) ──
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setTextColor(255, 255, 255);
-  doc.text(COMPANY.cmo, 6, 15);
+  doc.text(COMPANY.cmo, 6, 16);
+
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
-  doc.setTextColor(180, 220, 180);
-  // CMO title inline after name — use x offset
-  const ceoNameWidth = doc.getTextWidth(COMPANY.cmo);
-  doc.text(`  ${COMPANY.cmoTitle}`, 6 + ceoNameWidth, 15);
+  doc.setTextColor(117, 192, 67);
+  doc.text(COMPANY.cmoTitle, 6, 20);
 
-  // Brand top-right
+  // ── Brand (right column) ──
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6);
-  doc.text(COMPANY.brand.toUpperCase(), 79, 5, { align: 'right' });
+  doc.setFontSize(6.5);
+  doc.text(COMPANY.brand.toUpperCase(), 79, 6, { align: 'right' });
+
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(4.5);
   doc.setTextColor(180, 220, 180);
   const nameLines = doc.splitTextToSize(COMPANY.name, 28);
-  doc.text(nameLines, 79, 9, { align: 'right' });
+  doc.text(nameLines, 79, 10, { align: 'right' });
 
   // ── Body ──
   doc.setTextColor(20, 23, 23);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   const bodyNameLines = doc.splitTextToSize(COMPANY.name, 73);
-  doc.text(bodyNameLines, 6, 24);
+  doc.text(bodyNameLines, 6, 26);
 
   const nameBlockHeight = bodyNameLines.length * 4;
   doc.setFontSize(6.5);
   doc.setTextColor(100, 124, 100);
   doc.setFont('helvetica', 'normal');
-  doc.text(COMPANY.tagline, 6, 24 + nameBlockHeight);
+  doc.text(COMPANY.tagline, 6, 26 + nameBlockHeight);
 
   // ── Contact details ──
-  let y = 24 + nameBlockHeight + 6;
+  let y = 26 + nameBlockHeight + 6;
   [COMPANY.email, COMPANY.phone, COMPANY.website, COMPANY.address].forEach(val => {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6);
@@ -109,4 +110,4 @@ export async function shareCard() {
   } else {
     await navigator.clipboard.writeText(text);
   }
-}
+}s
