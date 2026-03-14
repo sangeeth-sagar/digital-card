@@ -47,6 +47,36 @@ export default function CardActions({ showToast }) {
 
       {/* Info strip */}
       <div className="info-strip">
+
+        {/* CEO */}
+        <div className="info-strip-row">
+          <div className="info-strip-icon">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="7" cy="5" r="2.5"/>
+              <path d="M2 12c0-2.2 2.2-4 5-4s5 1.8 5 4"/>
+            </svg>
+          </div>
+          <div>
+            <div className="info-strip-label">CEO</div>
+            <div className="info-strip-value">{COMPANY.person}</div>
+          </div>
+        </div>
+
+        {/* CMO */}
+        <div className="info-strip-row">
+          <div className="info-strip-icon">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="7" cy="5" r="2.5"/>
+              <path d="M2 12c0-2.2 2.2-4 5-4s5 1.8 5 4"/>
+            </svg>
+          </div>
+          <div>
+            <div className="info-strip-label">CMO</div>
+            <div className="info-strip-value">{COMPANY.cmo}</div>
+          </div>
+        </div>
+
+        {/* Email, Phone, Website, Address */}
         {[
           {
             label: 'Email', value: COMPANY.email,

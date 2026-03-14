@@ -3,6 +3,8 @@ const COMPANY = {
   brand:   'Adivinar',
   person:  'Shahabas SS',
   title:   'CEO',
+  cmo:     'Ebin Babuji',
+  cmoTitle:'CMO',
   email:   ' info@adivinartec.com',
   phone:   '+91 9746793732, +91 9947978894',
   address: '7th & 8th Floor, Lanarth Elite, Ground Junction, Kochi, Near Maharajas Metro, Marine Drive, Mahatma Gandhi Road, Hospital Road Junction, Ernakulam-682011, Kerala',
