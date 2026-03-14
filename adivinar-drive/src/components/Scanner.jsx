@@ -73,7 +73,7 @@ export default function Scanner({ showToast }) {
     }
 
     setIsUploading(true);
-    setStatus({ msg: '<span class="spinner"></span> Creating PDF and saving to Drive…', type: 'processing' });
+    setStatus({ msg: '<span class="spinner"></span> Saving the Photo', type: 'processing' });
 
     try {
       const res = await fetch('/api/upload-drive', {
@@ -89,7 +89,7 @@ export default function Scanner({ showToast }) {
 
       if (res.ok && data.success) {
         setStatus({ msg: `✅ PDF saved to Drive!`, type: 'success' });
-        showToast('Card PDF saved to Drive ✓', 'success');
+        showToast('saved ✓', 'success');
         setTimeout(reset, 3000);
       } else {
         throw new Error(data.message || 'Upload failed');
@@ -126,7 +126,7 @@ export default function Scanner({ showToast }) {
             </h3>
             <span className="ai-badge drive-badge">☁️ Drive Sync</span>
           </div>
-          <p>Capture front &amp; back — saved as one PDF to Google Drive</p>
+          <p>Capture front &amp; back — saved </p>
         </div>
 
         <div className="scanner-body">
@@ -146,7 +146,7 @@ export default function Scanner({ showToast }) {
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M8 11V3M4 7l4-4 4 4"/><path d="M2 13h12"/>
               </svg>
-              {hasFront && hasBack ? 'Save as PDF to Drive' : 'Save to Drive'}
+              {hasFront && hasBack ? 'Submit' : 'Submit'}
             </button>
           )}
 
