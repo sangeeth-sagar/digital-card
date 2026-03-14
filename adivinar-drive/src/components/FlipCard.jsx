@@ -8,7 +8,7 @@ export default function FlipCard() {
 
   return (
     <div className="card-section">
-      <div className="card-section-label">Your Digital Card</div>
+      <div className="card-section-label"> Digital Card</div>
 
       <div className="card-stage">
         <div
