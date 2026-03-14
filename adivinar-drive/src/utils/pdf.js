@@ -2,78 +2,95 @@ import COMPANY from './company';
 
 export function downloadPDF() {
   const { jsPDF } = window.jspdf;
-  const W = 85.6;
-  const H = 54;
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [W, H] });
 
-  // ── Dark header strip ──
+  // Use A5 landscape — enough space for all content
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a5' });
+  const W = 210; // A5 landscape width
+  const H = 148; // A5 landscape height
+
+  // ── Header strip ──
   doc.setFillColor(20, 23, 23);
-  doc.rect(0, 0, W, 19, 'F');
+  doc.rect(0, 0, W, 36, 'F');
   doc.setFillColor(117, 192, 67);
-  doc.rect(0, 18.5, W, 1, 'F');
+  doc.rect(0, 35.5, W, 1.5, 'F');
 
   // CEO
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.text(COMPANY.person, 6, 7);
+  doc.setFontSize(16);
+  doc.text(COMPANY.person, 12, 14);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6);
+  doc.setFontSize(10);
   doc.setTextColor(117, 192, 67);
-  doc.text(COMPANY.title, 6, 11);
+  doc.text(COMPANY.title, 12, 21);
+
+  // Divider between CEO and CMO
+  doc.setDrawColor(117, 192, 67);
+  doc.setLineWidth(0.3);
+  doc.line(12, 24, 100, 24);
 
   // CMO
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
   doc.setTextColor(255, 255, 255);
-  doc.text(COMPANY.cmo, 6, 16);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text(COMPANY.cmo, 12, 31);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6);
+  doc.setFontSize(10);
   doc.setTextColor(117, 192, 67);
-  doc.text(COMPANY.cmoTitle, 6, 20);
+  doc.text(COMPANY.cmoTitle, 12, 38);
 
   // Brand top-right
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
-  doc.text(COMPANY.brand.toUpperCase(), W - 6, 6, { align: 'right' });
+  doc.setFontSize(18);
+  doc.text(COMPANY.brand.toUpperCase(), W - 12, 14, { align: 'right' });
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(4.5);
+  doc.setFontSize(9);
   doc.setTextColor(180, 220, 180);
-  const nameLines = doc.splitTextToSize(COMPANY.name, 28);
-  doc.text(nameLines, W - 6, 10, { align: 'right' });
+  const nameLines = doc.splitTextToSize(COMPANY.name, 70);
+  doc.text(nameLines, W - 12, 22, { align: 'right' });
 
   // ── Body ──
-  doc.setTextColor(20, 23, 23);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  const bodyNameLines = doc.splitTextToSize(COMPANY.name, 73);
-  doc.text(bodyNameLines, 6, 26);
+  let y = 52;
 
-  const nameBlockH = bodyNameLines.length * 4;
-  doc.setFontSize(6.5);
+  // Tagline
+  doc.setFontSize(11);
   doc.setTextColor(100, 124, 100);
-  doc.setFont('helvetica', 'normal');
-  doc.text(COMPANY.tagline, 6, 26 + nameBlockH);
+  doc.setFont('helvetica', 'italic');
+  doc.text(COMPANY.tagline, 12, y);
+  y += 12;
 
-  // Contact details
-  let y = 26 + nameBlockH + 6;
-  [COMPANY.email, COMPANY.phone, COMPANY.website, COMPANY.address].forEach(val => {
+  // Contact rows
+  const contacts = [
+    { label: 'Email',   value: COMPANY.email   },
+    { label: 'Phone',   value: COMPANY.phone   },
+    { label: 'Website', value: COMPANY.website },
+    { label: 'Address', value: COMPANY.address },
+  ];
+
+  contacts.forEach(({ label, value }) => {
+    // Label
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6);
+    doc.setFontSize(8);
+    doc.setTextColor(150, 160, 150);
+    doc.text(label.toUpperCase(), 12, y);
+
+    // Value — wrapped to full width
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
     doc.setTextColor(9, 103, 15);
-    const lines = doc.splitTextToSize(val, 73);
-    doc.text(lines, 6, y);
-    y += lines.length * 3.8;
+    const lines = doc.splitTextToSize(value, W - 24);
+    doc.text(lines, 12, y + 6);
+    y += 6 + lines.length * 6 + 5;
   });
 
-  // ── Footer strip ──
+  // ── Footer ──
   doc.setFillColor(224, 243, 227);
-  doc.rect(0, 50, W, 6, 'F');
+  doc.rect(0, H - 12, W, 12, 'F');
   doc.setFont('helvetica', 'italic');
-  doc.setFontSize(6);
+  doc.setFontSize(10);
   doc.setTextColor(9, 103, 15);
-  doc.text(`"${COMPANY.tagline}"`, 6, 54);
+  doc.text(`"${COMPANY.tagline}"`, W / 2, H - 4, { align: 'center' });
 
   doc.save(`${COMPANY.brand}_Card.pdf`);
 }
