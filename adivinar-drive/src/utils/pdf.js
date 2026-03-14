@@ -1,58 +1,78 @@
-import { jsPDF } from "jspdf"; // <--- Add this import!
 import COMPANY from './company';
 
 export function downloadPDF() {
-  // Remove the `const { jsPDF } = window.jspdf;` line
-  
-  // Create your landscape 85x55mm card
+  const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [85, 55] });
 
+  // ── Dark header strip ──
   doc.setFillColor(20, 23, 23);
-  doc.rect(0, 0, 85, 14, 'F');
+  doc.rect(0, 0, 85, 15, 'F');
   doc.setFillColor(117, 192, 67);
-  doc.rect(0, 13.5, 85, 1.5, 'F');
+  doc.rect(0, 14.5, 85, 1, 'F');
 
+  // Person name
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.text(COMPANY.person, 6, 8);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.setTextColor(180, 220, 180);
-  doc.text(COMPANY.title, 6, 12.5);
+  doc.setFontSize(10);
+  doc.text(COMPANY.person, 6, 7);
 
-  doc.setFillColor(9, 103, 15);
+  // Title
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(180, 220, 180);
+  doc.text(COMPANY.title, 6, 12);
+
+  // Brand top-right
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6);
-  doc.text(COMPANY.brand.toUpperCase(), 72, 5);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(5);
-  doc.setTextColor(180, 220, 180);
-  doc.text(COMPANY.name, 72, 9);
+  doc.text(COMPANY.brand.toUpperCase(), 79, 5, { align: 'right' });
 
+  // Company name top-right — split into two lines if too long
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(4.5);
+  doc.setTextColor(180, 220, 180);
+  const nameLines = doc.splitTextToSize(COMPANY.name, 28);
+  doc.text(nameLines, 79, 9, { align: 'right' });
+
+  // ── Body ──
+  // Company name large — wrapped
   doc.setTextColor(20, 23, 23);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.text(COMPANY.name, 6, 22);
-  doc.setFontSize(7);
+  doc.setFontSize(8);
+  const bodyNameLines = doc.splitTextToSize(COMPANY.name, 73);
+  doc.text(bodyNameLines, 6, 22);
+
+  // Tagline
+  const nameBlockHeight = bodyNameLines.length * 4;
+  doc.setFontSize(6.5);
   doc.setTextColor(100, 124, 100);
   doc.setFont('helvetica', 'normal');
-  doc.text(COMPANY.tagline, 6, 27);
+  doc.text(COMPANY.tagline, 6, 22 + nameBlockHeight);
 
-  let y = 33;
-  [COMPANY.email, COMPANY.phone, COMPANY.website, COMPANY.address].forEach(val => {
+  // ── Contact details — each wrapped ──
+  let y = 22 + nameBlockHeight + 6;
+  const contacts = [
+    { icon: '✉', value: COMPANY.email   },
+    { icon: '✆', value: COMPANY.phone   },
+    { icon: '⊕', value: COMPANY.website },
+    { icon: '⊙', value: COMPANY.address },
+  ];
+
+  contacts.forEach(({ value }) => {
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
+    doc.setFontSize(6);
     doc.setTextColor(9, 103, 15);
-    doc.text(val, 6, y);
-    y += 4.5;
+    const lines = doc.splitTextToSize(value, 73);
+    doc.text(lines, 6, y);
+    y += lines.length * 3.8;
   });
 
+  // ── Footer strip ──
   doc.setFillColor(224, 243, 227);
   doc.rect(0, 50, 85, 6, 'F');
   doc.setFont('helvetica', 'italic');
-  doc.setFontSize(6.5);
+  doc.setFontSize(6);
   doc.setTextColor(9, 103, 15);
   doc.text(`"${COMPANY.tagline}"`, 6, 54);
 
