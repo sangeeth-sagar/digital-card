@@ -59,23 +59,22 @@ export function downloadPDF() {
   doc.text(COMPANY.tagline, 12, y);
   y += 10;
 
-  // Contact rows
+  // Contact rows — phone1 and phone2 as separate entries
   const contacts = [
     { label: 'Email',   value: COMPANY.email   },
-    { label: 'Phone',   value: COMPANY.phone   },
+    { label: 'Phone',   value: COMPANY.phone1  },
+    { label: 'Phone',   value: COMPANY.phone2  },
     { label: 'Website', value: COMPANY.website },
     { label: 'Address', value: COMPANY.address },
   ];
 
   contacts.forEach(({ label, value }) => {
-    // Label
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
     doc.setTextColor(150, 160, 150);
     doc.text(label.toUpperCase(), 12, y);
     y += 5;
 
-    // Value
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9.5);
     doc.setTextColor(9, 103, 15);
@@ -103,8 +102,9 @@ export function saveVCard() {
     `ORG:${COMPANY.name}`,
     `TITLE:${COMPANY.title}`,
     `EMAIL:${COMPANY.email}`,
-    `TEL:${COMPANY.phone}`,
-    `URL:https://${COMPANY.website}`,
+    `TEL;TYPE=CELL:${COMPANY.phone1}`,
+    `TEL;TYPE=CELL:${COMPANY.phone2}`,
+    `URL:${COMPANY.website}`,
     `ADR:;;${COMPANY.address}`,
     `NOTE:${COMPANY.tagline}`,
     'END:VCARD',
@@ -120,7 +120,7 @@ export function saveVCard() {
 }
 
 export async function shareCard() {
-  const text = `${COMPANY.person} — ${COMPANY.title}\n${COMPANY.cmo} — ${COMPANY.cmoTitle}\n${COMPANY.name}\n📧 ${COMPANY.email}\n📞 ${COMPANY.phone}\n🌐 ${COMPANY.website}`;
+  const text = `${COMPANY.person} — ${COMPANY.title}\n${COMPANY.cmo} — ${COMPANY.cmoTitle}\n${COMPANY.name}\n📧 ${COMPANY.email}\n📞 ${COMPANY.phone1}\n📞 ${COMPANY.phone2}\n🌐 ${COMPANY.website}`;
   if (navigator.share) {
     await navigator.share({ title: COMPANY.brand, text });
   } else {

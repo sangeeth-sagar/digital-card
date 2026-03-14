@@ -45,9 +45,7 @@ export default function CardActions({ showToast }) {
         </button>
       </div>
 
-      {/* Info strip */}
       <div className="info-strip">
-
         {/* CEO */}
         <div className="info-strip-row">
           <div className="info-strip-icon">
@@ -76,34 +74,73 @@ export default function CardActions({ showToast }) {
           </div>
         </div>
 
-        {[
-          {
-            label: 'Email', value: COMPANY.email,
-            icon: <><path d="M2 4a1 1 0 011-1h8a1 1 0 011 1v6a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M2 5.5l5 3 5-3"/></>,
-          },
-          {
-            label: 'Phone', value: COMPANY.phone,
-            icon: <path d="M2 3.5a1 1 0 011-1h1.5l1 2.5-1.2.9c.8 1.8 1.8 2.8 3.6 3.6l.9-1.2L11 9.5V11a1 1 0 01-1 1C4 12 2 7 2 3.5z"/>,
-          },
-          {
-            label: 'Website', value: COMPANY.website,
-            icon: <><circle cx="7" cy="7" r="5"/><path d="M2 7h10M7 2c-1.5 2-1.5 8 0 10M7 2c1.5 2 1.5 8 0 10"/></>,
-          },
-          {
-            label: 'Address', value: COMPANY.address,
-            icon: <><circle cx="7" cy="6" r="2.5"/><path d="M7 1C4.2 1 2 3.2 2 6c0 3.5 5 8 5 8s5-4.5 5-8c0-2.8-2.2-5-5-5z"/></>,
-          },
-        ].map(({ label, value, icon }) => (
-          <div className="info-strip-row" key={label}>
-            <div className="info-strip-icon">
-              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">{icon}</svg>
-            </div>
-            <div>
-              <div className="info-strip-label">{label}</div>
-              <div className="info-strip-value">{value}</div>
-            </div>
+        {/* Email */}
+        <div className="info-strip-row">
+          <div className="info-strip-icon">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M2 4a1 1 0 011-1h8a1 1 0 011 1v6a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/>
+              <path d="M2 5.5l5 3 5-3"/>
+            </svg>
           </div>
-        ))}
+          <div>
+            <div className="info-strip-label">Email</div>
+            <div className="info-strip-value">{COMPANY.email}</div>
+          </div>
+        </div>
+
+        {/* Phone 1 */}
+        <div className="info-strip-row">
+          <div className="info-strip-icon">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M2 3.5a1 1 0 011-1h1.5l1 2.5-1.2.9c.8 1.8 1.8 2.8 3.6 3.6l.9-1.2L11 9.5V11a1 1 0 01-1 1C4 12 2 7 2 3.5z"/>
+            </svg>
+          </div>
+          <div>
+            <div className="info-strip-label">Phone</div>
+            <div className="info-strip-value">{COMPANY.phone1}</div>
+          </div>
+        </div>
+
+        {/* Phone 2 */}
+        <div className="info-strip-row">
+          <div className="info-strip-icon">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M2 3.5a1 1 0 011-1h1.5l1 2.5-1.2.9c.8 1.8 1.8 2.8 3.6 3.6l.9-1.2L11 9.5V11a1 1 0 01-1 1C4 12 2 7 2 3.5z"/>
+            </svg>
+          </div>
+          <div>
+            <div className="info-strip-label">Phone</div>
+            <div className="info-strip-value">{COMPANY.phone2}</div>
+          </div>
+        </div>
+
+        {/* Website */}
+        <div className="info-strip-row">
+          <div className="info-strip-icon">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="7" cy="7" r="5"/>
+              <path d="M2 7h10M7 2c-1.5 2-1.5 8 0 10M7 2c1.5 2 1.5 8 0 10"/>
+            </svg>
+          </div>
+          <div>
+            <div className="info-strip-label">Website</div>
+            <div className="info-strip-value">{COMPANY.website}</div>
+          </div>
+        </div>
+
+        {/* Address */}
+        <div className="info-strip-row">
+          <div className="info-strip-icon">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="7" cy="6" r="2.5"/>
+              <path d="M7 1C4.2 1 2 3.2 2 6c0 3.5 5 8 5 8s5-4.5 5-8c0-2.8-2.2-5-5-5z"/>
+            </svg>
+          </div>
+          <div>
+            <div className="info-strip-label">Address</div>
+            <div className="info-strip-value">{COMPANY.address}</div>
+          </div>
+        </div>
       </div>
     </>
   );

@@ -1,6 +1,29 @@
 import React, { useState, useRef } from 'react';
 import '../assets/styles/Scanner.css';
 
+// Compress image to stay under Vercel's 4.5MB limit
+function compressImage(dataUrl, maxWidth = 1200, quality = 0.7) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+
+      // Scale down if too wide
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+
+      canvas.width  = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataUrl;
+  });
+}
+
 export default function Scanner({ showToast }) {
   const [images, setImages]           = useState({ front: null, back: null });
   const [status, setStatus]           = useState(null);
@@ -17,7 +40,7 @@ export default function Scanner({ showToast }) {
     const file = e.target.files[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) { showToast('Please select an image file.', 'error'); return; }
-    if (file.size > 25 * 1024 * 1024)   { showToast('Image too large. Max 10MB.', 'error'); return; }
+    if (file.size > 10 * 1024 * 1024)   { showToast('Image too large. Max 10MB.', 'error'); return; }
     const reader = new FileReader();
     reader.onload = ev => {
       setImages(prev => ({ ...prev, [side]: ev.target.result }));
@@ -59,13 +82,13 @@ export default function Scanner({ showToast }) {
     canvas.width  = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
     closeCamera();
     setImages(prev => ({ ...prev, [camSide]: dataUrl }));
     showToast(`${camSide === 'front' ? 'Front' : 'Back'} captured ✓`, 'success');
   }
 
-  // ── Upload — single PDF with front + back ────
+  // ── Upload ───────────────────────────────────
   async function uploadToDrive() {
     if (!images.front && !images.back) {
       setStatus({ msg: '⚠️ Capture or upload at least one side first.', type: 'warning' });
@@ -73,23 +96,24 @@ export default function Scanner({ showToast }) {
     }
 
     setIsUploading(true);
-    setStatus({ msg: '<span class="spinner"></span> Saving the Photo', type: 'processing' });
+    setStatus({ msg: '<span class="spinner"></span> Compressing and uploading…', type: 'processing' });
 
     try {
+      // Compress both images before sending
+      const front = images.front ? await compressImage(images.front) : null;
+      const back  = images.back  ? await compressImage(images.back)  : null;
+
       const res = await fetch('/api/upload-drive', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          front: images.front || null,
-          back:  images.back  || null,
-        }),
+        body:    JSON.stringify({ front, back }),
       });
 
       const data = await res.json();
 
       if (res.ok && data.success) {
-        setStatus({ msg: `✅ PDF saved to Drive!`, type: 'success' });
-        showToast('saved ✓', 'success');
+        setStatus({ msg: '✅ Saved !', type: 'success' });
+        showToast('Card Saved ✓', 'success');
         setTimeout(reset, 3000);
       } else {
         throw new Error(data.message || 'Upload failed');
@@ -130,7 +154,6 @@ export default function Scanner({ showToast }) {
         </div>
 
         <div className="scanner-body">
-
           {status && (
             <div
               className={`status-msg ${status.type}`}
@@ -146,7 +169,7 @@ export default function Scanner({ showToast }) {
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M8 11V3M4 7l4-4 4 4"/><path d="M2 13h12"/>
               </svg>
-              {hasFront && hasBack ? 'Submit' : 'Submit'}
+              {hasFront && hasBack ? 'Save Both ' : 'Save '}
             </button>
           )}
 
@@ -164,7 +187,6 @@ export default function Scanner({ showToast }) {
               </div>
             ))}
           </div>
-
         </div>
       </div>
 
