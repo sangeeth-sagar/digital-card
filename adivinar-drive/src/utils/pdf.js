@@ -7,7 +7,7 @@ async function svgToBase64(svgUrl) {
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      canvas.width  = img.naturalWidth  || 672;  // 2x for quality
+      canvas.width  = img.naturalWidth  || 672;
       canvas.height = img.naturalHeight || 384;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
@@ -21,7 +21,6 @@ async function svgToBase64(svgUrl) {
 export async function downloadPDF() {
   const { jsPDF } = window.jspdf;
 
-  // Card size: 85.6mm x 54mm landscape
   const W = 85.6;
   const H = 54;
 
@@ -32,7 +31,6 @@ export async function downloadPDF() {
     const frontImg = await svgToBase64('Front.svg');
     doc.addImage(frontImg, 'PNG', 0, 0, W, H);
   } catch {
-    // Fallback: plain green background with text
     doc.setFillColor(9, 103, 15);
     doc.rect(0, 0, W, H, 'F');
     doc.setTextColor(255, 255, 255);
@@ -58,7 +56,6 @@ export async function downloadPDF() {
   // ── Page 3: Contact details ──
   doc.addPage();
 
-  // Dark header
   doc.setFillColor(20, 23, 23);
   doc.rect(0, 0, W, 19, 'F');
   doc.setFillColor(117, 192, 67);
@@ -128,30 +125,6 @@ export async function downloadPDF() {
   doc.text(`"${COMPANY.tagline}"`, 6, 54);
 
   doc.save(`${COMPANY.brand}_Card.pdf`);
-}
-
-export function saveVCard() {
-  const vcf = [
-    'BEGIN:VCARD',
-    'VERSION:3.0',
-    `FN:${COMPANY.person}`,
-    `ORG:${COMPANY.name}`,
-    `TITLE:${COMPANY.title}`,
-    `EMAIL:${COMPANY.email}`,
-    `TEL:${COMPANY.phone}`,
-    `URL:https://${COMPANY.website}`,
-    `ADR:;;${COMPANY.address}`,
-    `NOTE:${COMPANY.tagline}`,
-    'END:VCARD',
-  ].join('\n');
-
-  const blob = new Blob([vcf], { type: 'text/vcard' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url;
-  a.download = `${COMPANY.brand}.vcf`;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 export async function shareCard() {

@@ -1,22 +1,17 @@
 import React from 'react';
 import COMPANY from '../utils/company';
-import { downloadPDF, saveVCard, shareCard } from '../utils/pdf';
+import { downloadPDF, shareCard } from '../utils/pdf';
 import '../assets/styles/CardActions.css';
 
 export default function CardActions({ showToast }) {
-  const handlePDF = () => {
-    try { downloadPDF(); showToast('PDF downloaded ✓', 'success'); }
+  const handlePDF = async () => {
+    try { await downloadPDF(); showToast('PDF downloaded ✓', 'success'); }
     catch { showToast('PDF generation failed.', 'error'); }
   };
 
   const handleShare = async () => {
     try { await shareCard(); showToast('Contact copied to clipboard!', 'info'); }
     catch { showToast('Could not share.', 'error'); }
-  };
-
-  const handleVCard = () => {
-    saveVCard();
-    showToast('vCard saved ✓', 'success');
   };
 
   return (
@@ -35,13 +30,6 @@ export default function CardActions({ showToast }) {
             <path d="M5.5 7l5-3M5.5 9l5 3"/>
           </svg>
           Share
-        </button>
-        <button className="btn btn-outline" onClick={handleVCard}>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <path d="M2 4a1 1 0 011-1h10a1 1 0 011 1v8a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/>
-            <path d="M2 7h12M6 11l-1.5-1.5L6 8"/>
-          </svg>
-          vCard
         </button>
       </div>
 
@@ -76,7 +64,6 @@ export default function CardActions({ showToast }) {
           </div>
         </div>
 
-        {/* Email, Phone, Website, Address */}
         {[
           {
             label: 'Email', value: COMPANY.email,
