@@ -159,7 +159,7 @@ export default function Scanner({ showToast }) {
     // Reset input so same file can be re-selected
     e.target.value = '';
     if (!file.type.startsWith('image/')) { showToast('Please select an image file.', 'error'); return; }
-    if (file.size > 10 * 1024 * 1024)   { showToast('Image too large. Max 10MB.', 'error'); return; }
+    if (file.size > 25 * 1024 * 1024)   { showToast('Image too large. Max 10MB.', 'error'); return; }
     const reader = new FileReader();
     reader.onload = ev => {
       setQualityPassed(prev => ({ ...prev, [side]: false }));
@@ -197,37 +197,25 @@ export default function Scanner({ showToast }) {
     }
   }
 
-  async function uploadToDrive() {
+  async function handleSubmit() {
     if (!images.front && !images.back) {
       setStatus({ msg: '⚠️ Capture or upload at least one side first.', type: 'warning' });
       return;
     }
     setIsUploading(true);
-    setStatus({ msg: '<span class="spinner"></span> Compressing and uploading…', type: 'processing' });
+    setStatus({ msg: '<span class="spinner"></span> Sending…', type: 'processing' });
     try {
       const front = images.front ? await compressImage(images.front) : null;
       const back  = images.back  ? await compressImage(images.back)  : null;
 
-      // Send to n8n webhook in parallel with Drive upload
-      const [res] = await Promise.all([
-        fetch('/api/upload-drive', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ front, back }),
-        }),
-        sendToWebhook(front, back),
-      ]);
+      await sendToWebhook(front, back);
 
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setStatus({ msg: '✅ Saved!', type: 'success' });
-        showToast('Card Saved ✓', 'success');
-        setTimeout(reset, 3000);
-      } else {
-        throw new Error(data.message || 'Upload failed');
-      }
+      setStatus({ msg: '✅ Sent!', type: 'success' });
+      showToast('Card Sent ✓', 'success');
+      setTimeout(reset, 3000);
     } catch (err) {
       setStatus({ msg: `❌ ${err.message}`, type: 'error' });
-      showToast('Upload failed.', 'error');
+      showToast('Failed to send.', 'error');
     } finally {
       setIsUploading(false);
     }
@@ -271,7 +259,7 @@ export default function Scanner({ showToast }) {
               </svg>
               Card Scanner
             </h3>
-            <span className="ai-badge drive-badge">☁️ Drive Sync</span>
+            <span className="ai-badge drive-badge">🤖 AI Scan</span>
           </div>
           <p>Auto-captures when card is perfectly positioned</p>
         </div>
@@ -293,7 +281,7 @@ export default function Scanner({ showToast }) {
           {anyUploaded && (
             <button
               className={`btn process-btn ${canUpload ? 'btn-green' : 'btn-disabled'}`}
-              onClick={canUpload ? uploadToDrive : undefined}
+              onClick={canUpload ? handleSubmit : undefined}
               disabled={!canUpload}
             >
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
