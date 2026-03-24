@@ -32,18 +32,45 @@ export default function Scanner({ showToast }) {
   const canvasRef  = useRef(null);
   const rafRef     = useRef(null);
 
-  // ── File upload ──────────────────────────────
-  function handleFileChange(side, e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) { showToast('Please select an image file.', 'error'); return; }
-    if (file.size > 25 * 1024 * 1024)   { showToast('Image too large. Max 10MB.', 'error'); return; }
-    const reader = new FileReader();
-    reader.onload = ev => {
-      setImages(prev => ({ ...prev, [side]: ev.target.result }));
-      showToast(`${side === 'front' ? 'Front' : 'Back'} side loaded ✓`, 'success');
-    };
-    reader.readAsDataURL(file);
+  // Live detection state
+  const [liveChecks,    setLiveChecks]    = useState(null);
+  const [livePassed,    setLivePassed]    = useState(false);
+  // Change options popup (camera retake or gallery)
+  const [changePopup, setChangePopup] = useState(null); // 'front' | 'back' | null
+
+  // File verify modal
+  const [verifyOpen,    setVerifyOpen]    = useState(false);
+  const [verifyDataUrl, setVerifyDataUrl] = useState(null);
+  const [verifySide,    setVerifySide]    = useState('front');
+
+  // Refs for hidden file inputs (for "change via gallery" after camera capture)
+  const frontFileRef = useRef(null);
+  const backFileRef  = useRef(null);
+
+  // ── Live analysis loop ──────────────────────────────────────────────────────
+  const analysisLoop = useCallback(() => {
+    const video  = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || !video.videoWidth) {
+      rafRef.current = requestAnimationFrame(analysisLoop);
+      return;
+    }
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+
+    const result = analyseFrame(canvas);
+    if (!result) { rafRef.current = requestAnimationFrame(analysisLoop); return; }
+
+    setLiveChecks(result.checks);
+    setLivePassed(result.passed);
+
+    rafRef.current = requestAnimationFrame(analysisLoop);
+  }, [camSide]); // eslint-disable-line
+
+  function startLoop() {
+    setLiveChecks(null); setLivePassed(false);
+    rafRef.current = requestAnimationFrame(analysisLoop);
   }
 
   function stopLoop() {
@@ -132,7 +159,7 @@ export default function Scanner({ showToast }) {
     // Reset input so same file can be re-selected
     e.target.value = '';
     if (!file.type.startsWith('image/')) { showToast('Please select an image file.', 'error'); return; }
-    if (file.size > 25 * 1024 * 1024)   { showToast('Image too large. Max 10MB.', 'error'); return; }
+    if (file.size > 10 * 1024 * 1024)   { showToast('Image too large. Max 10MB.', 'error'); return; }
     const reader = new FileReader();
     reader.onload = ev => {
       setQualityPassed(prev => ({ ...prev, [side]: false }));
