@@ -33,17 +33,16 @@ export default function Scanner({ showToast }) {
   const rafRef     = useRef(null);
 
   // Live detection state
-  const [liveChecks,    setLiveChecks]    = useState(null);
-  const [livePassed,    setLivePassed]    = useState(false);
-  // Change options popup (camera retake or gallery)
-  const [changePopup, setChangePopup] = useState(null); // 'front' | 'back' | null
+  const [liveChecks,  setLiveChecks]  = useState(null);
+  const [livePassed,  setLivePassed]  = useState(false);
+  const [changePopup, setChangePopup] = useState(null);
 
   // File verify modal
   const [verifyOpen,    setVerifyOpen]    = useState(false);
   const [verifyDataUrl, setVerifyDataUrl] = useState(null);
   const [verifySide,    setVerifySide]    = useState('front');
 
-  // Refs for hidden file inputs (for "change via gallery" after camera capture)
+  // Refs for hidden file inputs
   const frontFileRef = useRef(null);
   const backFileRef  = useRef(null);
 
@@ -58,13 +57,10 @@ export default function Scanner({ showToast }) {
     canvas.width  = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0);
-
     const result = analyseFrame(canvas);
     if (!result) { rafRef.current = requestAnimationFrame(analysisLoop); return; }
-
     setLiveChecks(result.checks);
     setLivePassed(result.passed);
-
     rafRef.current = requestAnimationFrame(analysisLoop);
   }, [camSide]); // eslint-disable-line
 
@@ -121,9 +117,8 @@ export default function Scanner({ showToast }) {
     showToast(`${camSide === 'front' ? 'Front' : 'Back'} captured ✓`, 'success');
   }
 
-  // Manual capture — ONLY allowed when ALL checks pass
   function manualCapture() {
-    if (!livePassed) return; // button is disabled anyway, but extra safety
+    if (!livePassed) return;
     const video  = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !video.videoWidth) { showToast('Camera not ready.', 'error'); return; }
@@ -133,14 +128,11 @@ export default function Scanner({ showToast }) {
     doCapture();
   }
 
-  // ── Change popup — retake or pick from gallery ───────────────────────────────
-  function openChangePopup(side) {
-    setChangePopup(side);
-  }
+  // ── Change popup ─────────────────────────────────────────────────────────────
+  function openChangePopup(side) { setChangePopup(side); }
 
   function changeViaCamera(side) {
     setChangePopup(null);
-    // Clear old image & quality so slot resets
     setImages(prev => ({ ...prev, [side]: null }));
     setQualityPassed(prev => ({ ...prev, [side]: false }));
     openCamera(side);
@@ -156,10 +148,9 @@ export default function Scanner({ showToast }) {
   function handleFileChange(side, e) {
     const file = e.target.files[0];
     if (!file) return;
-    // Reset input so same file can be re-selected
     e.target.value = '';
     if (!file.type.startsWith('image/')) { showToast('Please select an image file.', 'error'); return; }
-    if (file.size > 25 * 1024 * 1024)   { showToast('Image too large. Max 10MB.', 'error'); return; }
+    if (file.size > 25 * 1024 * 1024)   { showToast('Image too large. Max 25MB.', 'error'); return; }
     const reader = new FileReader();
     reader.onload = ev => {
       setQualityPassed(prev => ({ ...prev, [side]: false }));
@@ -180,7 +171,7 @@ export default function Scanner({ showToast }) {
 
   // ── Upload ───────────────────────────────────────────────────────────────────
 
-  // Sends images to n8n webhook (non-blocking — failure won't stop Drive upload)
+  // Non-blocking — fires to n8n in background, never blocks Drive upload
   async function sendToWebhook(front, back) {
     const N8N_WEBHOOK = 'http://173.212.241.174:5678/webhook/business-card-scan';
     try {
@@ -200,27 +191,43 @@ export default function Scanner({ showToast }) {
     }
   }
 
+  // Primary action — uploads front+back as PDF to Google Drive
+  async function uploadToDrive(front, back) {
+    const res = await fetch('/api/upload-drive', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ front, back }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Drive upload failed');
+    return data;
+  }
+
   async function handleSubmit() {
     if (!images.front && !images.back) {
       setStatus({ msg: '⚠️ Capture or upload at least one side first.', type: 'warning' });
       return;
     }
-
     setIsUploading(true);
-    setStatus({ msg: '<span class="spinner"></span> Sending…', type: 'processing' });
+    setStatus({ msg: '<span class="spinner"></span> Uploading to Drive…', type: 'processing' });
     try {
-      // Compress both images once, reuse for both calls
+      // Compress once — reused for both n8n and Drive
       const front = images.front ? await compressImage(images.front) : null;
       const back  = images.back  ? await compressImage(images.back)  : null;
 
-      await sendToWebhook(front, back);
+      // n8n fires in background — does NOT block Drive upload
+      sendToWebhook(front, back);
 
-      setStatus({ msg: '✅ Sent!', type: 'success' });
-      showToast('Card Sent ✓', 'success');
+      // Drive upload is primary — user sees this result
+      const result = await uploadToDrive(front, back);
+
+      setStatus({ msg: '✅ Saved to Drive!', type: 'success' });
+      showToast('Card saved to Drive ✓', 'success');
+      console.log('Drive file:', result.url);
       setTimeout(reset, 3000);
     } catch (err) {
       setStatus({ msg: `❌ ${err.message}`, type: 'error' });
-      showToast('Failed to send.', 'error');
+      showToast('Upload failed.', 'error');
     } finally {
       setIsUploading(false);
     }
@@ -348,19 +355,14 @@ export default function Scanner({ showToast }) {
 
           <div className="cam-video-wrap">
             <video ref={videoRef} autoPlay playsInline muted className="cam-video" />
-
-            {/* Guide box — border turns green when all pass */}
             <div className={`cam-guide-box ${livePassed ? 'guide-pass' : 'guide-fail'}`}>
               <span className="guide-corner gtl" /><span className="guide-corner gtr" />
               <span className="guide-corner gbl" /><span className="guide-corner gbr" />
             </div>
           </div>
 
-          {/* ── Conditions row — outside video, below it ── */}
           <div className="live-checks-row">
-            {!liveChecks && (
-              <div className="lc-init">Initialising camera…</div>
-            )}
+            {!liveChecks && <div className="lc-init">Initialising camera…</div>}
             {liveChecks && Object.values(liveChecks).map((chk, i) => (
               <div key={i} className={`lc-pill ${chk.pass ? 'lc-pass' : 'lc-fail'}`}>
                 <span className="lc-icon">{chk.icon}</span>
@@ -370,7 +372,6 @@ export default function Scanner({ showToast }) {
             ))}
           </div>
 
-          {/* Hint line */}
           <div className="live-hint">
             {!liveChecks && ''}
             {liveChecks && livePassed && <span className="lh-good">✓ All good — tap Capture Now</span>}
@@ -384,7 +385,6 @@ export default function Scanner({ showToast }) {
           <canvas ref={canvasRef} style={{ display: 'none' }} />
 
           <div className="cam-controls">
-            {/* Capture button — ONLY enabled when ALL checks pass */}
             <button
               className={`cam-capture-btn ${livePassed ? 'cam-btn-ready' : 'cam-btn-waiting'}`}
               onClick={livePassed ? manualCapture : undefined}
@@ -449,10 +449,7 @@ function UploadSlot({ side, image, qualityOk, onFile, onCamera, onChange }) {
               </svg>
               Ready
             </div>
-            {/* Change button → opens popup (camera retake OR gallery) */}
-            <button className="slot-change-btn" onClick={onChange}>
-              Change
-            </button>
+            <button className="slot-change-btn" onClick={onChange}>Change</button>
           </>
         ) : (
           <>
