@@ -32,18 +32,45 @@ export default function Scanner({ showToast }) {
   const canvasRef  = useRef(null);
   const rafRef     = useRef(null);
 
-  // ── File upload ──────────────────────────────
-  function handleFileChange(side, e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) { showToast('Please select an image file.', 'error'); return; }
-    if (file.size > 25 * 1024 * 1024)   { showToast('Image too large. Max 10MB.', 'error'); return; }
-    const reader = new FileReader();
-    reader.onload = ev => {
-      setImages(prev => ({ ...prev, [side]: ev.target.result }));
-      showToast(`${side === 'front' ? 'Front' : 'Back'} side loaded ✓`, 'success');
-    };
-    reader.readAsDataURL(file);
+  // Live detection state
+  const [liveChecks,    setLiveChecks]    = useState(null);
+  const [livePassed,    setLivePassed]    = useState(false);
+  // Change options popup (camera retake or gallery)
+  const [changePopup, setChangePopup] = useState(null); // 'front' | 'back' | null
+
+  // File verify modal
+  const [verifyOpen,    setVerifyOpen]    = useState(false);
+  const [verifyDataUrl, setVerifyDataUrl] = useState(null);
+  const [verifySide,    setVerifySide]    = useState('front');
+
+  // Refs for hidden file inputs (for "change via gallery" after camera capture)
+  const frontFileRef = useRef(null);
+  const backFileRef  = useRef(null);
+
+  // ── Live analysis loop ──────────────────────────────────────────────────────
+  const analysisLoop = useCallback(() => {
+    const video  = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || !video.videoWidth) {
+      rafRef.current = requestAnimationFrame(analysisLoop);
+      return;
+    }
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+
+    const result = analyseFrame(canvas);
+    if (!result) { rafRef.current = requestAnimationFrame(analysisLoop); return; }
+
+    setLiveChecks(result.checks);
+    setLivePassed(result.passed);
+
+    rafRef.current = requestAnimationFrame(analysisLoop);
+  }, [camSide]); // eslint-disable-line
+
+  function startLoop() {
+    setLiveChecks(null); setLivePassed(false);
+    rafRef.current = requestAnimationFrame(analysisLoop);
   }
 
   function stopLoop() {
@@ -173,18 +200,6 @@ export default function Scanner({ showToast }) {
     }
   }
 
-  // Uploads images to Google Drive as a PDF (blocking — user sees result)
-  async function uploadToDrive(front, back) {
-    const res = await fetch('/api/upload-drive', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ front, back }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Drive upload failed');
-    return data; // { success, fileId, fileName, url }
-  }
-
   async function handleSubmit() {
     if (!images.front && !images.back) {
       setStatus({ msg: '⚠️ Capture or upload at least one side first.', type: 'warning' });
@@ -192,27 +207,20 @@ export default function Scanner({ showToast }) {
     }
 
     setIsUploading(true);
-    setStatus({ msg: '<span class="spinner"></span> Uploading to Drive…', type: 'processing' });
-
+    setStatus({ msg: '<span class="spinner"></span> Sending…', type: 'processing' });
     try {
       // Compress both images once, reuse for both calls
       const front = images.front ? await compressImage(images.front) : null;
       const back  = images.back  ? await compressImage(images.back)  : null;
 
-      // Fire webhook in background — don't await, doesn't block Drive upload
-      sendToWebhook(front, back);
+      await sendToWebhook(front, back);
 
-      // Drive upload is the primary action — await this
-      const result = await uploadToDrive(front, back);
-
-      setStatus({ msg: '✅ Saved to Drive!', type: 'success' });
-      showToast('Card saved to Drive ✓', 'success');
-      console.log('Drive file:', result.url);
+      setStatus({ msg: '✅ Sent!', type: 'success' });
+      showToast('Card Sent ✓', 'success');
       setTimeout(reset, 3000);
-
     } catch (err) {
       setStatus({ msg: `❌ ${err.message}`, type: 'error' });
-      showToast('Upload failed.', 'error');
+      showToast('Failed to send.', 'error');
     } finally {
       setIsUploading(false);
     }
