@@ -1,5 +1,11 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "framework": "vite"
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/n8n/:path*",
+      "destination": "http://173.212.241.174:5678/:path*"
+    }
+  ]
 }

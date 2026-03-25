@@ -173,7 +173,7 @@ export default function Scanner({ showToast }) {
 
   // Non-blocking — fires to n8n in background, never blocks Drive upload
   async function sendToWebhook(front, back) {
-    const N8N_WEBHOOK = 'http://173.212.241.174:5678/webhook/business-card-scan';
+    const N8N_WEBHOOK = '/n8n/webhook/business-card-scan';
     try {
       const res = await fetch(N8N_WEBHOOK, {
         method: 'POST',
