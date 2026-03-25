@@ -179,52 +179,64 @@ export default function Scanner({ showToast }) {
   }
 
   // ── Upload ───────────────────────────────────────────────────────────────────
+
+  // Sends images to n8n webhook (non-blocking — failure won't stop Drive upload)
   async function sendToWebhook(front, back) {
     const N8N_WEBHOOK = 'http://173.212.241.174:5678/webhook/business-card-scan';
     try {
-      await fetch(N8N_WEBHOOK, {
+      const res = await fetch(N8N_WEBHOOK, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          front: front || null,
-          back:  back  || null,
+          front:     front || null,
+          back:      back  || null,
           timestamp: new Date().toISOString(),
         }),
       });
+      if (!res.ok) console.warn('n8n webhook status:', res.status);
+      else         console.log('✅ n8n webhook sent');
     } catch (err) {
-      // Non-blocking — webhook failure won't stop the main upload
       console.warn('n8n webhook error:', err.message);
     }
   }
 
-  async function uploadToDrive() {
+  // Uploads images to Google Drive as a PDF (blocking — user sees result)
+  async function uploadToDrive(front, back) {
+    const res = await fetch('/api/upload-drive', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ front, back }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Drive upload failed');
+    return data; // { success, fileId, fileName, url }
+  }
+
+  async function handleSubmit() {
     if (!images.front && !images.back) {
       setStatus({ msg: '⚠️ Capture or upload at least one side first.', type: 'warning' });
       return;
     }
+
     setIsUploading(true);
-    setStatus({ msg: '<span class="spinner"></span> Compressing and uploading…', type: 'processing' });
+    setStatus({ msg: '<span class="spinner"></span> Uploading to Drive…', type: 'processing' });
+
     try {
+      // Compress both images once, reuse for both calls
       const front = images.front ? await compressImage(images.front) : null;
       const back  = images.back  ? await compressImage(images.back)  : null;
 
-      // Send to n8n webhook in parallel with Drive upload
-      const [res] = await Promise.all([
-        fetch('/api/upload-drive', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ front, back }),
-        }),
-        sendToWebhook(front, back),
-      ]);
+      // Fire webhook in background — don't await, doesn't block Drive upload
+      sendToWebhook(front, back);
 
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setStatus({ msg: '✅ Saved!', type: 'success' });
-        showToast('Card Saved ✓', 'success');
-        setTimeout(reset, 3000);
-      } else {
-        throw new Error(data.message || 'Upload failed');
-      }
+      // Drive upload is the primary action — await this
+      const result = await uploadToDrive(front, back);
+
+      setStatus({ msg: '✅ Saved to Drive!', type: 'success' });
+      showToast('Card saved to Drive ✓', 'success');
+      console.log('Drive file:', result.url);
+      setTimeout(reset, 3000);
+
     } catch (err) {
       setStatus({ msg: `❌ ${err.message}`, type: 'error' });
       showToast('Upload failed.', 'error');
@@ -271,7 +283,7 @@ export default function Scanner({ showToast }) {
               </svg>
               Card Scanner
             </h3>
-            <span className="ai-badge drive-badge">☁️ Drive Sync</span>
+            <span className="ai-badge drive-badge">🤖 AI Scan</span>
           </div>
           <p>Auto-captures when card is perfectly positioned</p>
         </div>
@@ -293,7 +305,7 @@ export default function Scanner({ showToast }) {
           {anyUploaded && (
             <button
               className={`btn process-btn ${canUpload ? 'btn-green' : 'btn-disabled'}`}
-              onClick={canUpload ? uploadToDrive : undefined}
+              onClick={canUpload ? handleSubmit : undefined}
               disabled={!canUpload}
             >
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
