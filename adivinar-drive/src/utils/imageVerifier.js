@@ -1,15 +1,20 @@
 /**
  * imageVerifier.js
  *
+ * Thresholds tuned against real card images:
+ *   - White marble card (bright):  lum=219, sharp=1002, edge=43%
+ *   - Dark red card (dark):        lum=43,  sharp=507,  edge=20%
+ *   - Real photo card (normal):    lum=129, sharp=970,  edge=41%
+ *
  * Two modes:
- *   1. verifyCardImage(dataUrl)   — for uploaded files (async, full check)
- *   2. analyseFrame(canvas)       — for live camera frames (sync, fast, no async)
+ *   1. verifyCardImage(dataUrl) — for uploaded files (async)
+ *   2. analyseFrame(canvas)    — for live camera frames (sync, fast)
  *
  * Checks:
- *   BRIGHTNESS  — not too dark / overexposed
- *   SHARPNESS   — image in focus
- *   PERSPECTIVE — card shot straight-on (perpendicular), not at angle
- *   COVERAGE    — card fills enough of the frame
+ *   BRIGHTNESS — not pitch black / not severely overexposed
+ *   SHARPNESS  — enough detail for OCR to read text
+ *   COVERAGE   — card has content, not just empty background
+ *   PERSPECTIVE — only for live camera (disabled for gallery uploads)
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -48,7 +53,7 @@ function lineFit(xs, ys) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  INDIVIDUAL CHECKS  (work on raw pixel Uint8ClampedArray)
+//  INDIVIDUAL CHECKS
 // ─────────────────────────────────────────────────────────────────────────────
 
 function checkBrightness(pixels, w, h) {
@@ -59,25 +64,29 @@ function checkBrightness(pixels, w, h) {
     sum += lum;
     if (pixels[i*4] > 240 && pixels[i*4+1] > 240 && pixels[i*4+2] > 240) blown++;
   }
-  const avg = sum / n;
+  const avg      = sum / n;
   const blownPct = blown / n;
-  const tooDark   = avg < 60;
-  const tooBright = avg > 215 || blownPct > 0.35;
+
+  // min=25 → allows dark cards like the red card (lum=43) with margin
+  // blown >70% → truly washed out / overexposed flash
+  const tooDark   = avg < 25;
+  const tooBright = blownPct > 0.70;
+
   return {
     pass:   !tooDark && !tooBright,
     label:  'Lighting',
     icon:   '☀️',
-    reason: tooDark   ? 'Too dark — add more light'
-          : tooBright ? 'Overexposed — reduce glare'
+    reason: tooDark   ? 'Too dark — move to better light'
+          : tooBright ? 'Too much glare — reduce flash or tilt card'
           : 'Good lighting ✓',
   };
 }
 
 function checkSharpness(pixels, w, h) {
-  // Sample every 2nd pixel for speed on live frames
   const grey = new Float32Array(w * h);
   for (let i = 0; i < w*h; i++)
     grey[i] = 0.299*pixels[i*4] + 0.587*pixels[i*4+1] + 0.114*pixels[i*4+2];
+
   let variance = 0, count = 0;
   for (let y = 2; y < h-2; y += 2) {
     for (let x = 2; x < w-2; x += 2) {
@@ -89,19 +98,22 @@ function checkSharpness(pixels, w, h) {
     }
   }
   const score = count ? variance / count : 0;
+
+  // Threshold=8: real blurry phone photos score 3-8, clear photos score 50+
+  // Your sample cards scored 507-1002 — well above this
   return {
-    pass:   score >= 20,
+    pass:   score >= 8,
     label:  'Focus',
     icon:   '🔍',
-    reason: score < 20 ? 'Blurry — tap to focus or hold steady'
-                       : 'In focus ✓',
+    reason: score < 8 ? 'Too blurry — hold steady and tap to focus'
+                      : 'In focus ✓',
     score,
   };
 }
 
 function checkPerspective(pixels, w, h) {
-  const BRIGHT = 155;
-  const minSpan = w * 0.22;
+  const BRIGHT   = 105;
+  const minSpan  = w * 0.15;
   const rowYs = [], rowLefts = [], rowRights = [];
 
   for (let y = 0; y < h; y++) {
@@ -120,22 +132,20 @@ function checkPerspective(pixels, w, h) {
   const [leftSlope]  = lineFit(rowYs, rowLefts);
   const [rightSlope] = lineFit(rowYs, rowRights);
 
-  const topY = rowYs[0], botY = rowYs[rowYs.length - 1];
+  const topY    = rowYs[0], botY = rowYs[rowYs.length - 1];
   const topLeft  = leftSlope  * topY + rowLefts[0];
   const botLeft  = leftSlope  * botY + rowLefts[0];
   const topRight = rightSlope * topY + rowRights[0];
   const botRight = rightSlope * botY + rowRights[0];
 
-  const topWidth = topRight - topLeft;
-  const botWidth = botRight - botLeft;
+  const topWidth     = topRight - topLeft;
+  const botWidth     = botRight - botLeft;
   const widthDiffPct = Math.abs(topWidth - botWidth) / w * 100;
+  const maxSlope     = Math.max(Math.abs(leftSlope), Math.abs(rightSlope));
+  const minSlope     = Math.min(Math.abs(leftSlope), Math.abs(rightSlope));
+  const slopeRatio   = maxSlope > 0.01 ? minSlope / maxSlope : 1.0;
 
-  const maxSlope  = Math.max(Math.abs(leftSlope), Math.abs(rightSlope));
-  const minSlope  = Math.min(Math.abs(leftSlope), Math.abs(rightSlope));
-  const slopeRatio = maxSlope > 0.01 ? minSlope / maxSlope : 1.0;
-
-  const pass = widthDiffPct < 15 && slopeRatio > 0.40;
-
+  const pass = widthDiffPct < 20 && slopeRatio > 0.30;
   return {
     pass,
     label:  'Angle',
@@ -150,6 +160,7 @@ function checkCoverage(pixels, w, h) {
   const grey = new Float32Array(w * h);
   for (let i = 0; i < w*h; i++)
     grey[i] = 0.299*pixels[i*4] + 0.587*pixels[i*4+1] + 0.114*pixels[i*4+2];
+
   const x0 = Math.round(w*0.15), x1 = Math.round(w*0.85);
   const y0 = Math.round(h*0.15), y1 = Math.round(h*0.85);
   let edge = 0, total = 0;
@@ -162,22 +173,24 @@ function checkCoverage(pixels, w, h) {
     }
   }
   const density = total ? edge / total : 0;
+
+  // 1.5% threshold: blank/empty image ~0.2-0.5%, your cards scored 20-43%
   return {
-    pass:   density >= 0.025,
+    pass:   density >= 0.015,
     label:  'Card in Frame',
     icon:   '🃏',
-    reason: density < 0.025 ? 'Move closer — card too small'
-                             : 'Card fills frame ✓',
+    reason: density < 0.015 ? 'No card detected — point camera at the card'
+                             : 'Card detected ✓',
   };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  analyseFrame — SYNC, called every animation frame from live camera
-//  Takes a canvas element, returns result immediately (no await needed)
+//  analyseFrame — SYNC, live camera (includes perspective check)
 // ─────────────────────────────────────────────────────────────────────────────
 export function analyseFrame(canvas) {
   if (!canvas || !canvas.width) return null;
   const w = canvas.width, h = canvas.height;
+
   // Downscale to max 320px wide for speed
   const scale = Math.min(1, 320 / w);
   const sw = Math.round(w * scale), sh = Math.round(h * scale);
@@ -195,7 +208,6 @@ export function analyseFrame(canvas) {
   const checks = { brightness, sharpness, perspective, coverage };
   const passed  = brightness.pass && sharpness.pass && perspective.pass && coverage.pass;
 
-  // Find the first failing reason
   const failReason = !brightness.pass  ? brightness.reason
                    : !sharpness.pass   ? sharpness.reason
                    : !perspective.pass ? perspective.reason
@@ -206,7 +218,8 @@ export function analyseFrame(canvas) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  verifyCardImage — ASYNC, for uploaded files
+//  verifyCardImage — ASYNC, gallery uploads (perspective check disabled)
+//  Perspective is skipped because uploaded images are already flat/cropped
 // ─────────────────────────────────────────────────────────────────────────────
 export async function verifyCardImage(dataUrl) {
   return new Promise(resolve => {
@@ -223,17 +236,18 @@ export async function verifyCardImage(dataUrl) {
 
       const brightness  = checkBrightness(pixels, w, h);
       const sharpness   = checkSharpness(pixels, w, h);
-      const perspective = checkPerspective(pixels, w, h);
       const coverage    = checkCoverage(pixels, w, h);
 
-      const checks = { brightness, sharpness, perspective, coverage };
-      const passed  = brightness.pass && sharpness.pass && perspective.pass && coverage.pass;
+      // Perspective disabled for uploads — images are already flat
+      const perspective = { pass: true, label: 'Angle', icon: '📐', reason: 'Angle check skipped ✓' };
 
-      let advice = !brightness.pass  ? brightness.reason
-                 : !sharpness.pass   ? sharpness.reason
-                 : !perspective.pass ? perspective.reason
-                 : !coverage.pass    ? coverage.reason
-                 : '✓ Photo looks great — ready to save';
+      const checks = { brightness, sharpness, perspective, coverage };
+      const passed  = brightness.pass && sharpness.pass && coverage.pass;
+
+      const advice = !brightness.pass ? brightness.reason
+                   : !sharpness.pass  ? sharpness.reason
+                   : !coverage.pass   ? coverage.reason
+                   : '✓ Photo looks great — ready to save';
 
       resolve({ passed, checks, advice });
     };

@@ -559,3 +559,17 @@
   margin-top: 4px;
 }
 .change-cancel:hover { color: var(--ink); }
+
+/* ── Uploading / disabled slot state ─────────────────────────────────────── */
+.upload-slot.slot-uploading {
+  pointer-events: none;
+  opacity: 0.5;
+  filter: grayscale(30%);
+  transition: opacity 0.2s, filter 0.2s;
+}
+
+.slot-action-btn.slot-action-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}

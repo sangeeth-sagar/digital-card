@@ -199,7 +199,7 @@ export default function Scanner({ showToast }) {
       body:    JSON.stringify({ front, back }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Drive upload failed');
+    if (!res.ok) throw new Error(data.message || 'Upload failed');
     return data;
   }
 
@@ -209,7 +209,7 @@ export default function Scanner({ showToast }) {
       return;
     }
     setIsUploading(true);
-    setStatus({ msg: '<span class="spinner"></span> Uploading to Drive…', type: 'processing' });
+    setStatus({ msg: '<span class="spinner"></span> Uploading…', type: 'processing' });
     try {
       // Compress once — reused for both n8n and Drive
       const front = images.front ? await compressImage(images.front) : null;
@@ -221,8 +221,8 @@ export default function Scanner({ showToast }) {
       // Drive upload is primary — user sees this result
       const result = await uploadToDrive(front, back);
 
-      setStatus({ msg: '✅ Saved to Drive!', type: 'success' });
-      showToast('Card saved to Drive ✓', 'success');
+      setStatus({ msg: '✅ Saved!', type: 'success' });
+      showToast('Card saved ✓', 'success');
       console.log('Drive file:', result.url);
       setTimeout(reset, 3000);
     } catch (err) {
@@ -242,10 +242,13 @@ export default function Scanner({ showToast }) {
 
   useEffect(() => () => stopLoop(), []);
 
-  const hasFront    = !!images.front, hasBack = !!images.back;
-  const anyUploaded = hasFront || hasBack;
-  const allPassed   = (hasFront ? qualityPassed.front : true) && (hasBack ? qualityPassed.back : true);
-  const canUpload   = anyUploaded && allPassed && !isUploading;
+  const hasFront  = !!images.front;
+  const hasBack   = !!images.back;
+  // Save is enabled as soon as front is captured (and front quality passed)
+  // Back quality only matters if back is also captured
+  const frontPassed = hasFront && qualityPassed.front;
+  const backOk      = hasBack ? qualityPassed.back : true;
+  const canUpload   = frontPassed && backOk && !isUploading;
 
   return (
     <>
@@ -273,7 +276,7 @@ export default function Scanner({ showToast }) {
             </h3>
             <span className="ai-badge drive-badge">🤖 AI Scan</span>
           </div>
-          <p>Auto-captures when card is perfectly positioned</p>
+          <p>Capture when the card is perfectly positioned</p>
         </div>
 
         <div className="scanner-body">
@@ -283,14 +286,16 @@ export default function Scanner({ showToast }) {
             side="front" image={images.front} qualityOk={qualityPassed.front}
             onFile={handleFileChange} onCamera={openCamera}
             onChange={() => openChangePopup('front')}
+            uploading={isUploading}
           />
           <UploadSlot
             side="back" image={images.back} qualityOk={qualityPassed.back}
             onFile={handleFileChange} onCamera={openCamera}
             onChange={() => openChangePopup('back')}
+            uploading={isUploading}
           />
 
-          {anyUploaded && (
+          {hasFront && (
             <button
               className={`btn process-btn ${canUpload ? 'btn-green' : 'btn-disabled'}`}
               onClick={canUpload ? handleSubmit : undefined}
@@ -299,11 +304,17 @@ export default function Scanner({ showToast }) {
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M8 11V3M4 7l4-4 4 4"/><path d="M2 13h12"/>
               </svg>
-              {!allPassed ? '⚠ Quality check failed — retake photo' : hasFront && hasBack ? 'Save Both' : 'Save'}
+              {!qualityPassed.front
+                ? '⚠ Front quality check failed — retake'
+                : hasBack && !qualityPassed.back
+                  ? '⚠ Back quality check failed — retake'
+                  : hasFront && hasBack
+                    ? 'Save Both'
+                    : 'Save'}
             </button>
           )}
 
-          {anyUploaded && !isUploading && (
+          {(hasFront || hasBack) && !isUploading && (
             <button className="btn btn-outline" style={{ width: '100%', marginTop: 8 }} onClick={reset}>
               Clear
             </button>
@@ -416,9 +427,10 @@ export default function Scanner({ showToast }) {
 }
 
 // ── Upload Slot ───────────────────────────────────────────────────────────────
-function UploadSlot({ side, image, qualityOk, onFile, onCamera, onChange }) {
+function UploadSlot({ side, image, qualityOk, onFile, onCamera, onChange, uploading }) {
   const isBack = side === 'back';
   const label  = isBack ? 'Back' : 'Front';
+
   return (
     <>
       <div className="side-label">
@@ -436,7 +448,7 @@ function UploadSlot({ side, image, qualityOk, onFile, onCamera, onChange }) {
         )}
       </div>
 
-      <div className={`upload-slot${image ? ' has-image' : ''}`}>
+      <div className={`upload-slot${image ? ' has-image' : ''}${uploading ? ' slot-uploading' : ''}`}>
         {image ? (
           <>
             <img src={image} alt={`${label} side`} className="slot-preview" />
@@ -449,7 +461,7 @@ function UploadSlot({ side, image, qualityOk, onFile, onCamera, onChange }) {
               </svg>
               Ready
             </div>
-            <button className="slot-change-btn" onClick={onChange}>Change</button>
+            <button className="slot-change-btn" onClick={uploading ? undefined : onChange} disabled={uploading}>Change</button>
           </>
         ) : (
           <>
@@ -466,15 +478,15 @@ function UploadSlot({ side, image, qualityOk, onFile, onCamera, onChange }) {
             </div>
             <div className="slot-title">Upload {label} Side</div>
             <div className="slot-actions">
-              <label className="slot-action-btn">
+              <label className={`slot-action-btn${uploading ? ' slot-action-disabled' : ''}`}>
                 <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6">
                   <rect x="1" y="2" width="11" height="9" rx="1.5"/><circle cx="6.5" cy="6.5" r="2"/>
                 </svg>
                 Gallery
-                <input type="file" accept="image/*" onChange={e => onFile(side, e)} style={{ display: 'none' }} />
+                <input type="file" accept="image/*" onChange={e => onFile(side, e)} style={{ display: 'none' }} disabled={uploading} />
               </label>
               <span style={{ color: '#ccc', fontSize: 13 }}>·</span>
-              <button className="slot-action-btn" onClick={() => onCamera(side)}>
+              <button className={`slot-action-btn${uploading ? ' slot-action-disabled' : ''}`} onClick={uploading ? undefined : () => onCamera(side)} disabled={uploading}>
                 <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6">
                   <circle cx="6.5" cy="7.5" r="2"/><path d="M1 3.5h11v8H1zM4 3.5l.8-2h2.4l.8 2"/>
                 </svg>
